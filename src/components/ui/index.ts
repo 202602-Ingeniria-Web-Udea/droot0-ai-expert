@@ -23,6 +23,7 @@ export { ErrorState } from "./error-state";
 export { Field, type FieldControlProps } from "./field";
 export { Input } from "./input";
 export { Label } from "./label";
+export { Select } from "./select";
 export { Spinner } from "./spinner";
 export { Textarea } from "./textarea";
 export { ToastProvider, useToast, type ToastOptions, type ToastVariant } from "./toast";
