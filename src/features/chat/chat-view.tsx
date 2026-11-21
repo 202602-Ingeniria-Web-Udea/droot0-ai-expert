@@ -11,6 +11,7 @@ import { describeApiError, isRetryableError } from "@/lib/api/errors";
 import { redirectToLogin } from "@/lib/api/redirect";
 import { useAsyncData } from "@/lib/api/use-async-data";
 import type { ConversationDetailResponse, Message } from "@/lib/contracts/conversations";
+import { DeleteConversationDialog } from "@/features/conversations/delete-conversation-dialog";
 import { ChatEmptyState } from "./chat-empty-state";
 import { ChatHeader } from "./chat-header";
 import { ChatSkeleton } from "./chat-skeleton";
@@ -22,6 +23,8 @@ import { useStickToBottom } from "./use-stick-to-bottom";
 
 type ChatFrameProps = {
   title: string;
+  /** Header actions for the open conversation. */
+  actions?: ReactNode;
   children: ReactNode;
   /** Composer area anchored at the bottom. */
   footer?: ReactNode;
@@ -32,10 +35,18 @@ type ChatFrameProps = {
 };
 
 /** Header, independently scrolling message region, and composer anchored at the bottom. */
-function ChatFrame({ title, children, footer, floating, scrollRef, onScroll }: ChatFrameProps) {
+function ChatFrame({
+  title,
+  actions,
+  children,
+  footer,
+  floating,
+  scrollRef,
+  onScroll,
+}: ChatFrameProps) {
   return (
     <div className="flex h-full flex-col">
-      <ChatHeader title={title} />
+      <ChatHeader title={title} actions={actions} />
 
       <div className="relative min-h-0 flex-1">
         <div ref={scrollRef} onScroll={onScroll} className="h-full overflow-y-auto">
@@ -68,6 +79,7 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<PendingMessage | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
   // State updates are asynchronous; the ref blocks a second send immediately.
   const inFlight = useRef(false);
 
@@ -155,6 +167,18 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
   return (
     <ChatFrame
       title={summary?.title ?? "New conversation"}
+      actions={
+        summary ? (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-danger hover:bg-danger-soft"
+            onClick={() => setConfirmingDelete(true)}
+          >
+            Delete
+          </Button>
+        ) : null
+      }
       scrollRef={scroll.ref}
       onScroll={scroll.onScroll}
       floating={
@@ -200,6 +224,13 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
       ) : (
         <MessageList messages={visibleMessages}>{pending ? <TypingIndicator /> : null}</MessageList>
       )}
+
+      <DeleteConversationDialog
+        conversation={confirmingDelete ? summary : null}
+        onClose={() => setConfirmingDelete(false)}
+        // The open conversation no longer exists: go to a new, empty chat.
+        onDeleted={() => router.replace("/chat")}
+      />
     </ChatFrame>
   );
 }
