@@ -1,16 +1,24 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Container, PageHeader } from "@/components/layout";
+import { buttonStyles } from "@/components/ui";
+import { ConversationList } from "@/features/conversations/conversation-list";
 
 export const metadata: Metadata = { title: "History" };
 
-// Temporary page so the navigation has a destination. Replaced by its own feature.
 export default function HistoryPage() {
   return (
-    <Container width="content" className="py-8">
+    <Container className="max-w-5xl space-y-6 py-8">
       <PageHeader
         title="History"
-        description="The conversation history is added in a later feature."
+        description="Open a conversation to continue it, or delete the ones you no longer need."
+        actions={
+          <Link href="/chat" className={buttonStyles({})}>
+            New conversation
+          </Link>
+        }
       />
+      <ConversationList />
     </Container>
   );
 }
