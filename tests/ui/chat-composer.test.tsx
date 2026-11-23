@@ -121,10 +121,15 @@ describe("Chat composer", () => {
 
   it("shows the pending state, stays editable, and appends the stored messages", async () => {
     let body: unknown;
+    let releaseReply: (() => void) | undefined;
+    const replyGate = new Promise<void>((resolve) => {
+      releaseReply = resolve;
+    });
+
     server.use(
       http.post(chatUrl, async ({ request }) => {
         body = await request.json();
-        await delay(60);
+        await replyGate;
         return ok(followUp);
       }),
     );
@@ -141,6 +146,8 @@ describe("Chat composer", () => {
     await userEvent.type(composer(), "next");
     expect(composer()).toHaveValue("next");
     expect(screen.getByRole("button", { name: "Sending" })).toBeDisabled();
+
+    releaseReply?.();
 
     expect(
       await within(log).findByText("Here is a counter built with a closure."),
