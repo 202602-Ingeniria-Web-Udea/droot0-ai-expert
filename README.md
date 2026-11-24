@@ -12,7 +12,7 @@ The assistant is intentionally specialized. It answers programming and software 
 
 ## Main features
 
-- AI-powered programming chat.
+- AI-powered programming chat with Markdown rendering, syntax-highlighted code blocks, and copy-code actions.
 - Secure registration, login, logout, and session handling.
 - Protected routes and role-based access.
 - Personal conversation creation, continuation, and deletion.
@@ -21,7 +21,7 @@ The assistant is intentionally specialized. It answers programming and software 
 - ADMIN assistant configuration for the system prompt, model, temperature, and token limit.
 - ADMIN application statistics.
 - Responsive and accessible interface.
-- Automated backend test suite.
+- Automated backend and frontend test suite.
 - Server-side DeepSeek integration with bounded conversational context.
 - Safe handling of provider failures, timeouts, and rate limits.
 
@@ -250,22 +250,41 @@ Open `http://localhost:3000`.
 ## Testing
 
 ```bash
+pnpm verify
 pnpm test
 pnpm lint
 pnpm typecheck
 pnpm build
 ```
 
-The backend test suite contains 58 tests covering:
+`pnpm verify` runs environment validation, linting, type checking, the full test suite, and a production build.
 
-- Shared request validation.
-- API error handling and origin validation.
-- DeepSeek success, rate-limit, provider-error, invalid-response, timeout, and missing-key behavior.
-- Conversation ownership, ordering, renaming, and deletion.
-- Chat creation, context assembly, persistence, title generation, and no-persistence-on-failure behavior.
-- Admin role changes and protection rules.
-- Statistics counts and recent activity.
-- Route handler authentication, authorization, validation, and success responses.
+The automated suite contains **20 test files and 148 tests**:
+
+- Backend tests cover shared request validation, API errors, origin validation, DeepSeek success and failure behavior, conversation ownership, chat persistence, admin role rules, statistics, and route authorization.
+- Frontend tests use Vitest, React Testing Library, jsdom, and MSW to cover landing, authentication, app shell, chat layout, message rendering, composer states, history, admin users, assistant configuration, and statistics.
+- The frontend tests mock the backend; they do not call Supabase or DeepSeek.
+
+## Responsive and accessibility verification
+
+Responsive layouts were reviewed at:
+
+- Mobile: 390 × 844.
+- Tablet: 768 × 1024.
+- Desktop: 1280 × 800.
+
+The review covered the landing page, login, chat, conversation history, admin users, assistant configuration, statistics, and the mobile navigation drawer. No horizontal overflow was detected.
+
+Accessibility verification included:
+
+- Automated WCAG 2 A/AA and WCAG 2.1 A/AA scans with axe-core across the primary pages.
+- Zero automated violations after the final fix.
+- Keyboard navigation and visible focus.
+- Dialog focus trapping and Escape dismissal.
+- Mobile navigation focus containment and focus return.
+- Accessible form labels and error associations.
+- Reduced-motion styles.
+- Sufficient color contrast checked by the automated scans.
 
 ## Assistant evaluation
 
@@ -296,7 +315,7 @@ https://droot0-ai-expert.vercel.app/
 
 The production deployment uses Vercel, Supabase PostgreSQL, and DeepSeek.
 
-Production API verification completed:
+Production verification completed:
 
 - Landing page loads over HTTPS.
 - Security headers are present.
@@ -306,56 +325,56 @@ Production API verification completed:
 - ADMIN statistics return real database values.
 - Logout succeeds.
 - DeepSeek chat responses work.
-
-The production test conversations created during evaluation were deleted afterward.
+- A real browser completed the full login, chat, history, admin, mobile, delete, and logout workflow on 2026-11-24.
+- Temporary verification conversations were deleted afterward.
 
 ## Project status
 
-The backend is complete and deployed: authentication, authorization, database persistence, conversation management, DeepSeek chat, administration APIs, statistics, and automated tests.
+The application is complete and deployed.
 
-The frontend is in progress. The landing page is currently a foundation placeholder, and the remaining application interfaces are being developed.
+The backend includes authentication, authorization, database persistence, conversation management, DeepSeek chat, administration APIs, statistics, and automated tests.
+
+The frontend includes the landing page, authentication interfaces, responsive app shell, chat and message rendering, conversation history, admin user management, assistant configuration, and statistics dashboard.
 
 ## Known limitations
 
 - No streaming AI responses.
 - No conversation search or export.
 - No dedicated application-level chat rate limiter; provider rate limits are handled.
-- No CSP yet.
+- No Content Security Policy yet.
 - Admin user listing has no pagination.
-- The frontend interfaces are not yet complete.
+- No browser end-to-end test suite is committed; the live production flow was verified with a separate smoke check.
 - The Prisma dependency audit reports one transitive advisory in configuration tooling.
 
 ## Future improvements
 
-- Markdown rendering with syntax-highlighted code blocks.
-- Copy-code action.
 - Conversation search and export.
-- Suggested programming questions.
 - Message feedback.
 - Programming-language badges.
 - Streaming responses.
 - Application-level usage quotas.
+- Committed Playwright end-to-end tests.
+- Content Security Policy hardening.
 
-## Team contributions
+## Final demo checklist
 
-### Diego Ferney Pulgarín Jiménez
-
-- Backend architecture and API implementation.
-- Supabase and Prisma data layer.
-- Authentication and authorization.
-- DeepSeek integration and system prompt.
-- Administration APIs and statistics.
-- Backend tests and security review.
-- Deployment preparation and production verification.
-
-### Bryan Giraldo Quintero
-
-- Frontend architecture and user experience.
-- Landing page and authentication interfaces.
-- Application shell and responsive navigation.
-- Chat and conversation history interfaces.
-- Administration interfaces.
-- Responsive design, accessibility, and frontend integration.
+- [x] Landing page loads over HTTPS.
+- [x] Registration and login forms work.
+- [x] Protected routes redirect unauthenticated users.
+- [x] New conversation is created from the first message.
+- [x] DeepSeek returns a live response.
+- [x] Markdown and code blocks render safely.
+- [x] Conversation history opens and continues conversations.
+- [x] Conversation deletion requires confirmation.
+- [x] Admin users and roles load.
+- [x] Assistant configuration loads.
+- [x] Statistics show real database values.
+- [x] Logout clears the session.
+- [x] Mobile navigation and chat composer are usable.
+- [x] Responsive layouts show no horizontal overflow.
+- [x] Accessibility scans report no automated WCAG A/AA violations.
+- [x] Security headers are present.
+- [x] No secrets are committed.
 
 ## License
 

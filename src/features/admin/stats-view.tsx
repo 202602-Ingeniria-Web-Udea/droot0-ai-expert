@@ -49,12 +49,16 @@ function RoleBreakdown({ usersByRole }: { usersByRole: AdminStats["usersByRole"]
       <CardContent>
         <dl className="space-y-4">
           {roles.map(({ role, count }) => (
-            <div key={role}>
-              <div className="flex items-baseline justify-between gap-3 text-sm">
-                <dt className="font-medium text-ink">{role}</dt>
-                <dd className="text-ink-muted tabular-nums">{formatNumber(count)}</dd>
-              </div>
-              <div aria-hidden="true" className="mt-1.5 h-2 overflow-hidden rounded-full bg-sunken">
+            <div
+              key={role}
+              className="grid grid-cols-[1fr_auto] items-baseline gap-x-3 gap-y-1.5 text-sm"
+            >
+              <dt className="font-medium text-ink">{role}</dt>
+              <dd className="text-ink-muted tabular-nums">{formatNumber(count)}</dd>
+              <div
+                aria-hidden="true"
+                className="col-span-2 h-2 overflow-hidden rounded-full bg-sunken"
+              >
                 <div
                   className="h-full rounded-full bg-primary"
                   style={{ width: total === 0 ? "0%" : `${(count / total) * 100}%` }}
