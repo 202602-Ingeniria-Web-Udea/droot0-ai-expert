@@ -129,6 +129,8 @@ Authentication uses Supabase Auth with server-managed cookies through `@supabase
 - Foreign or missing conversations return `404` to avoid exposing their existence.
 - Mutating cookie-authenticated requests validate the request origin.
 - ADMIN routes require the database `ADMIN` role.
+- Supabase Row-Level Security is enabled on public application tables, and `anon`/`authenticated` Data API privileges are revoked.
+- Prisma connects through the server-side `postgres` role, which bypasses RLS; the browser never receives database credentials.
 
 ## AI integration
 
