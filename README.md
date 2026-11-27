@@ -15,7 +15,7 @@ The assistant is intentionally specialized. It answers programming and software 
 - AI-powered programming chat with Markdown rendering, syntax-highlighted code blocks, and copy-code actions.
 - Secure registration, login, logout, and session handling.
 - Protected routes and role-based access.
-- Personal conversation creation, continuation, renaming, and deletion.
+- Personal conversation creation, continuation, renaming, export, and deletion.
 - Personal conversation history.
 - ADMIN user management and role editing.
 - ADMIN assistant configuration for the system prompt, model, temperature, and token limit.
@@ -350,7 +350,7 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 
 ## Future improvements
 
-- Conversation search and export.
+- Conversation search.
 - Message feedback.
 - Programming-language badges.
 - Streaming responses.

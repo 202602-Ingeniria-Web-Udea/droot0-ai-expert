@@ -3,7 +3,18 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useRef, useState, type ReactNode, type Ref, type UIEventHandler } from "react";
-import { Alert, Button, EmptyState, ErrorState, buttonStyles } from "@/components/ui";
+import {
+  Alert,
+  Button,
+  Dropdown,
+  DropdownContent,
+  DropdownItem,
+  DropdownTrigger,
+  EmptyState,
+  ErrorState,
+  buttonStyles,
+  useToast,
+} from "@/components/ui";
 import { sendMessage } from "@/lib/api/chat";
 import { isApiClientError } from "@/lib/api/client";
 import { getConversation } from "@/lib/api/conversations";
@@ -11,6 +22,10 @@ import { describeApiError, isRetryableError } from "@/lib/api/errors";
 import { redirectToLogin } from "@/lib/api/redirect";
 import { useAsyncData } from "@/lib/api/use-async-data";
 import type { ConversationDetailResponse, Message } from "@/lib/contracts/conversations";
+import {
+  downloadConversationExport,
+  type ConversationExportFormat,
+} from "@/lib/utils/conversation-export";
 import { DeleteConversationDialog } from "@/features/conversations/delete-conversation-dialog";
 import { RenameConversationDialog } from "@/features/conversations/rename-conversation-dialog";
 import { ChatEmptyState } from "./chat-empty-state";
@@ -75,6 +90,7 @@ type Failure = { content: string; message: string; retryable: boolean };
 /** An open conversation (or a new one, when `initial` is omitted) with its composer. */
 function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
   const router = useRouter();
+  const { toast } = useToast();
   const [summary, setSummary] = useState(initial?.conversation ?? null);
   const [messages, setMessages] = useState<Message[]>(initial?.messages ?? []);
   const [draft, setDraft] = useState("");
@@ -154,6 +170,18 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
     void send(content);
   }
 
+  function exportConversation(format: ConversationExportFormat) {
+    if (!summary) {
+      return;
+    }
+
+    downloadConversationExport({ conversation: summary, messages }, format);
+    toast({
+      variant: "success",
+      title: format === "markdown" ? "Markdown export downloaded" : "JSON export downloaded",
+    });
+  }
+
   const optimistic: Message[] = pending
     ? [
         {
@@ -175,6 +203,21 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
             <Button variant="ghost" size="sm" onClick={() => setRenaming(true)}>
               Rename
             </Button>
+            <Dropdown>
+              <DropdownTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={pending !== null}>
+                  Export
+                </Button>
+              </DropdownTrigger>
+              <DropdownContent>
+                <DropdownItem onSelect={() => exportConversation("markdown")}>
+                  Download Markdown
+                </DropdownItem>
+                <DropdownItem onSelect={() => exportConversation("json")}>
+                  Download JSON
+                </DropdownItem>
+              </DropdownContent>
+            </Dropdown>
             <Button
               variant="ghost"
               size="sm"
