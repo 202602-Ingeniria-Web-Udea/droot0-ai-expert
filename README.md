@@ -267,10 +267,10 @@ pnpm build
 
 `pnpm verify` runs environment validation, linting, type checking, the full test suite, and a production build.
 
-The automated suite contains **20 test files and 148 tests**:
+The automated suite contains **22 test files and 178 tests**:
 
-- Backend tests cover shared request validation, API errors, origin validation, DeepSeek success and failure behavior, conversation ownership, chat persistence, admin role rules, statistics, and route authorization.
-- Frontend tests use Vitest, React Testing Library, jsdom, and MSW to cover landing, authentication, app shell, chat layout, message rendering, composer states, history, admin users, assistant configuration, and statistics.
+- Backend tests cover shared request validation, API errors, origin validation, DeepSeek success and failure behavior, conversation ownership and search, chat persistence, message feedback, admin role rules and pagination, statistics, and route authorization.
+- Frontend tests use Vitest, React Testing Library, jsdom, and MSW to cover landing, authentication, app shell, chat layout, message rendering and feedback, composer states, history and search, Markdown/JSON export, admin users and pagination, assistant configuration, and statistics.
 - The frontend tests mock the backend; they do not call Supabase or DeepSeek.
 
 ## Responsive and accessibility verification
@@ -336,13 +336,25 @@ Production verification completed:
 - A real browser completed the full login, chat, history, admin, mobile, delete, and logout workflow on 2026-11-24.
 - Temporary verification conversations were deleted afterward.
 
+A final production audit on 2026-11-27 confirmed:
+
+- Landing, login, and registration pages return `200`.
+- HSTS, frame, content-type, referrer, and permissions headers are present.
+- Protected routes redirect unauthenticated visitors to `/login`.
+- Unauthenticated APIs return `401`.
+- ADMIN login succeeds and `/api/auth/me` returns the `ADMIN` role.
+- Conversation history, admin users, assistant configuration, and statistics load.
+- The deployed admin user list shows pagination controls.
+- Assistant messages show Helpful / Not helpful controls.
+- All public application tables have Row-Level Security enabled, with no Data API grants for `anon` or `authenticated`.
+
 ## Project status
 
 The application is complete and deployed.
 
-The backend includes authentication, authorization, database persistence, conversation management, DeepSeek chat, administration APIs, statistics, and automated tests.
+The backend includes authentication, authorization, database persistence, conversation management and search, message feedback, DeepSeek chat, paginated administration APIs, statistics, and automated tests.
 
-The frontend includes the landing page, authentication interfaces, responsive app shell, chat and message rendering, conversation history, admin user management, assistant configuration, and statistics dashboard.
+The frontend includes the landing page, authentication interfaces, responsive app shell, chat and message rendering, conversation history with search and export, message feedback, admin user management with pagination, assistant configuration, and statistics dashboard.
 
 ## Known limitations
 
@@ -368,9 +380,11 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 - [x] DeepSeek returns a live response.
 - [x] Markdown and code blocks render safely.
 - [x] Conversation history opens and continues conversations.
+- [x] Conversation search and Markdown/JSON export work.
 - [x] Assistant responses can be rated helpful or not helpful.
 - [x] Conversation deletion requires confirmation.
 - [x] Admin users and roles load.
+- [x] Admin user listing paginates.
 - [x] Assistant configuration loads.
 - [x] Statistics show real database values.
 - [x] Logout clears the session.
