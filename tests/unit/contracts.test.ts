@@ -60,8 +60,12 @@ describe("shared request contracts", () => {
     ).toBe(false);
   });
 
-  it("coerces and validates the conversation limit", () => {
-    expect(conversationListQuerySchema.parse({ limit: "25" })).toEqual({ limit: 25 });
+  it("coerces and validates the conversation list query", () => {
+    expect(conversationListQuerySchema.parse({ limit: "25", q: "  closures  " })).toEqual({
+      limit: 25,
+      q: "closures",
+    });
     expect(conversationListQuerySchema.safeParse({ limit: "101" }).success).toBe(false);
+    expect(conversationListQuerySchema.safeParse({ q: "x".repeat(201) }).success).toBe(false);
   });
 });

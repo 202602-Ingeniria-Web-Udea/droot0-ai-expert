@@ -10,10 +10,12 @@ export async function GET(request: Request) {
   try {
     const user = await requireUser();
     const { searchParams } = new URL(request.url);
+    const q = searchParams.get("q")?.trim() || undefined;
     const query = conversationListQuerySchema.parse({
       limit: searchParams.get("limit") ?? undefined,
+      q,
     });
-    const conversations = await listConversations(user.id, query.limit);
+    const conversations = await listConversations(user.id, query.limit, query.q);
 
     return jsonOk({ conversations });
   } catch (error) {

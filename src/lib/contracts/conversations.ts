@@ -24,6 +24,7 @@ export type ConversationSummary = z.infer<typeof conversationSummarySchema>;
 
 export const conversationListQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).optional(),
+  q: z.string().trim().min(1).max(200).optional(),
 });
 export type ConversationListQuery = z.infer<typeof conversationListQuerySchema>;
 

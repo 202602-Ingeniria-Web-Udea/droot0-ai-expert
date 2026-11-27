@@ -1,5 +1,5 @@
 import "server-only";
-import type { Conversation, Message } from "@prisma/client";
+import type { Conversation, Message, Prisma } from "@prisma/client";
 import type { ConversationSummary, Message as MessageDto } from "@/lib/contracts/conversations";
 import { prisma } from "@/server/db/prisma";
 import { ApiError } from "@/server/http/api-error";
@@ -41,9 +41,33 @@ export function toMessageDto(message: Message): MessageDto {
 export async function listConversations(
   userId: string,
   limit = DEFAULT_CONVERSATION_LIMIT,
+  search?: string,
 ): Promise<ConversationSummary[]> {
+  const where: Prisma.ConversationWhereInput = { userId };
+
+  if (search) {
+    where.OR = [
+      {
+        title: {
+          contains: search,
+          mode: "insensitive",
+        },
+      },
+      {
+        messages: {
+          some: {
+            content: {
+              contains: search,
+              mode: "insensitive",
+            },
+          },
+        },
+      },
+    ];
+  }
+
   const conversations = await prisma.conversation.findMany({
-    where: { userId },
+    where,
     orderBy: [{ updatedAt: "desc" }, { createdAt: "desc" }],
     take: limit,
     include: {

@@ -6,8 +6,19 @@ import {
 } from "@/lib/contracts/conversations";
 import { apiRequest } from "./client";
 
-export function listConversations(signal?: AbortSignal) {
-  return apiRequest("/api/conversations", { schema: conversationListResponseSchema, signal });
+export function listConversations(query?: string, signal?: AbortSignal) {
+  const searchParams = new URLSearchParams();
+  const trimmed = query?.trim();
+
+  if (trimmed) {
+    searchParams.set("q", trimmed);
+  }
+
+  const suffix = searchParams.toString();
+  return apiRequest(`/api/conversations${suffix ? `?${suffix}` : ""}`, {
+    schema: conversationListResponseSchema,
+    signal,
+  });
 }
 
 /** Rejects with NOT_FOUND when the conversation is missing or belongs to someone else. */

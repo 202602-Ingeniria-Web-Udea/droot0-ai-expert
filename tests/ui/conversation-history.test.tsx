@@ -70,6 +70,53 @@ describe("ConversationList", () => {
     );
   });
 
+  it("searches conversations and clears the search", async () => {
+    server.use(
+      http.get(listUrl, ({ request }) => {
+        const query = new URL(request.url).searchParams.get("q");
+        return query === "quick"
+          ? ok({ conversations: [sorting] })
+          : ok({ conversations: [closures, sorting] });
+      }),
+    );
+    renderList();
+
+    await screen.findByRole("link", { name: closures.title });
+    const search = screen.getByRole("searchbox", { name: "Search conversations" });
+    await userEvent.type(search, "quick");
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(await screen.findByRole("link", { name: sorting.title })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: closures.title })).not.toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+
+    expect(await screen.findByRole("link", { name: closures.title })).toBeInTheDocument();
+    expect(search).toHaveValue("");
+  });
+
+  it("shows a no-results state for an unmatched search", async () => {
+    server.use(
+      http.get(listUrl, ({ request }) => {
+        const query = new URL(request.url).searchParams.get("q");
+        return query === "missing" ? ok({ conversations: [] }) : ok({ conversations: [closures] });
+      }),
+    );
+    renderList();
+
+    await screen.findByRole("link", { name: closures.title });
+    await userEvent.type(
+      screen.getByRole("searchbox", { name: "Search conversations" }),
+      "missing",
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Search" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "No matching conversations" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Clear search" })).toBeInTheDocument();
+  });
+
   it("shows a loading state and then recovers from an error with retry", async () => {
     let calls = 0;
     server.use(

@@ -16,7 +16,7 @@ The assistant is intentionally specialized. It answers programming and software 
 - Secure registration, login, logout, and session handling.
 - Protected routes and role-based access.
 - Personal conversation creation, continuation, renaming, export, and deletion.
-- Personal conversation history.
+- Personal conversation history with search by title or message content.
 - ADMIN user management and role editing.
 - ADMIN assistant configuration for the system prompt, model, temperature, and token limit.
 - ADMIN application statistics.
@@ -169,22 +169,22 @@ The prompt can be updated by an ADMIN through the assistant configuration API.
 
 ## API summary
 
-| Method   | Endpoint                    | Purpose                        |
-| -------- | --------------------------- | ------------------------------ |
-| `POST`   | `/api/auth/register`        | Create an account              |
-| `POST`   | `/api/auth/login`           | Create a session               |
-| `POST`   | `/api/auth/logout`          | Clear the session              |
-| `GET`    | `/api/auth/me`              | Current user and role          |
-| `GET`    | `/api/conversations`        | List owned conversations       |
-| `GET`    | `/api/conversations/:id`    | Read an owned conversation     |
-| `PATCH`  | `/api/conversations/:id`    | Rename an owned conversation   |
-| `DELETE` | `/api/conversations/:id`    | Delete an owned conversation   |
-| `POST`   | `/api/chat`                 | Send a message to DeepSeek     |
-| `GET`    | `/api/admin/users`          | List users                     |
-| `PATCH`  | `/api/admin/users/:id/role` | Change a user role             |
-| `GET`    | `/api/admin/assistant`      | Read assistant configuration   |
-| `PUT`    | `/api/admin/assistant`      | Update assistant configuration |
-| `GET`    | `/api/admin/stats`          | Read application statistics    |
+| Method   | Endpoint                    | Purpose                            |
+| -------- | --------------------------- | ---------------------------------- |
+| `POST`   | `/api/auth/register`        | Create an account                  |
+| `POST`   | `/api/auth/login`           | Create a session                   |
+| `POST`   | `/api/auth/logout`          | Clear the session                  |
+| `GET`    | `/api/auth/me`              | Current user and role              |
+| `GET`    | `/api/conversations`        | List or search owned conversations |
+| `GET`    | `/api/conversations/:id`    | Read an owned conversation         |
+| `PATCH`  | `/api/conversations/:id`    | Rename an owned conversation       |
+| `DELETE` | `/api/conversations/:id`    | Delete an owned conversation       |
+| `POST`   | `/api/chat`                 | Send a message to DeepSeek         |
+| `GET`    | `/api/admin/users`          | List users                         |
+| `PATCH`  | `/api/admin/users/:id/role` | Change a user role                 |
+| `GET`    | `/api/admin/assistant`      | Read assistant configuration       |
+| `PUT`    | `/api/admin/assistant`      | Update assistant configuration     |
+| `GET`    | `/api/admin/stats`          | Read application statistics        |
 
 ## Local setup
 
@@ -350,7 +350,6 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 
 ## Future improvements
 
-- Conversation search.
 - Message feedback.
 - Streaming responses.
 - Application-level usage quotas.

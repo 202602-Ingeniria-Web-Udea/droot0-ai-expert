@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRef, useState } from "react";
-import { Button, EmptyState, ErrorState, buttonStyles } from "@/components/ui";
+import { Button, EmptyState, ErrorState, Input, buttonStyles } from "@/components/ui";
 import { listConversations } from "@/lib/api/conversations";
 import { describeApiError } from "@/lib/api/errors";
 import { useAsyncData } from "@/lib/api/use-async-data";
@@ -22,47 +22,125 @@ function ListSkeleton() {
   );
 }
 
+function ConversationSearch({
+  value,
+  activeQuery,
+  onChange,
+  onSubmit,
+  onClear,
+}: {
+  value: string;
+  activeQuery: string;
+  onChange: (value: string) => void;
+  onSubmit: () => void;
+  onClear: () => void;
+}) {
+  return (
+    <form
+      role="search"
+      aria-label="Search conversations"
+      className="flex flex-col gap-2 sm:flex-row"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit();
+      }}
+    >
+      <div className="min-w-0 flex-1">
+        <label htmlFor="conversation-search" className="sr-only">
+          Search conversations
+        </label>
+        <Input
+          id="conversation-search"
+          type="search"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder="Search by title or message content"
+          maxLength={200}
+          autoComplete="off"
+        />
+      </div>
+      <div className="flex shrink-0 gap-2">
+        <Button type="submit" variant="secondary">
+          Search
+        </Button>
+        {activeQuery ? (
+          <Button type="button" variant="ghost" onClick={onClear}>
+            Clear
+          </Button>
+        ) : null}
+      </div>
+    </form>
+  );
+}
+
 /**
  * The signed-in user's conversations, most recent first.
  *
- * The backend returns only conversations owned by the session user, so this
- * list never filters by user on the client. One list serves every screen
- * size: stacked cards on small screens, aligned rows from the `md` breakpoint.
+ * The backend returns only conversations owned by the session user and applies
+ * the search filter there. One list serves every screen size: stacked cards on
+ * small screens, aligned rows from the `md` breakpoint.
  */
 export function ConversationList() {
-  const conversations = useAsyncData("conversations", (signal) => listConversations(signal));
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const conversations = useAsyncData(`conversations:${searchQuery}`, (signal) =>
+    listConversations(searchQuery, signal),
+  );
   const [toRename, setToRename] = useState<ConversationSummary | null>(null);
   const [toDelete, setToDelete] = useState<ConversationSummary | null>(null);
   const regionRef = useRef<HTMLDivElement>(null);
 
-  if (conversations.status === "loading") {
-    return <ListSkeleton />;
+  function submitSearch() {
+    setSearchQuery(searchInput.trim());
   }
 
-  if (conversations.status === "error") {
-    return (
-      <ErrorState
-        title="Your conversations could not be loaded"
-        description={describeApiError(conversations.error)}
-        onRetry={conversations.reload}
-      />
-    );
+  function clearSearch() {
+    setSearchInput("");
+    setSearchQuery("");
   }
 
-  const items = conversations.data.conversations;
+  const items = conversations.status === "success" ? conversations.data.conversations : [];
 
   return (
-    <div ref={regionRef} tabIndex={-1} className="outline-none">
-      {items.length === 0 ? (
-        <EmptyState
-          title="No conversations yet"
-          description="Conversations appear here after you send your first message."
-          action={
-            <Link href="/chat" className={buttonStyles({})}>
-              Start a conversation
-            </Link>
-          }
+    <div ref={regionRef} tabIndex={-1} className="space-y-4 outline-none">
+      <ConversationSearch
+        value={searchInput}
+        activeQuery={searchQuery}
+        onChange={setSearchInput}
+        onSubmit={submitSearch}
+        onClear={clearSearch}
+      />
+
+      {conversations.status === "loading" ? (
+        <ListSkeleton />
+      ) : conversations.status === "error" ? (
+        <ErrorState
+          title="Your conversations could not be loaded"
+          description={describeApiError(conversations.error)}
+          onRetry={conversations.reload}
         />
+      ) : items.length === 0 ? (
+        searchQuery ? (
+          <EmptyState
+            title="No matching conversations"
+            description={`No conversations matched "${searchQuery}". Try another search.`}
+            action={
+              <Button variant="secondary" onClick={clearSearch}>
+                Clear search
+              </Button>
+            }
+          />
+        ) : (
+          <EmptyState
+            title="No conversations yet"
+            description="Conversations appear here after you send your first message."
+            action={
+              <Link href="/chat" className={buttonStyles({})}>
+                Start a conversation
+              </Link>
+            }
+          />
+        )
       ) : (
         <>
           <div

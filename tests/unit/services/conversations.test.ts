@@ -63,6 +63,38 @@ describe("conversation service", () => {
     );
   });
 
+  it("searches owned conversations by title or message content", async () => {
+    mocks.conversation.findMany.mockResolvedValue([]);
+
+    await listConversations(testIds.user, 10, "closures");
+
+    expect(mocks.conversation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: {
+          userId: testIds.user,
+          OR: [
+            {
+              title: {
+                contains: "closures",
+                mode: "insensitive",
+              },
+            },
+            {
+              messages: {
+                some: {
+                  content: {
+                    contains: "closures",
+                    mode: "insensitive",
+                  },
+                },
+              },
+            },
+          ],
+        },
+      }),
+    );
+  });
+
   it("returns 404 when the conversation is not owned", async () => {
     mocks.conversation.findFirst.mockResolvedValue(null);
 
