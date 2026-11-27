@@ -12,6 +12,7 @@ import { redirectToLogin } from "@/lib/api/redirect";
 import { useAsyncData } from "@/lib/api/use-async-data";
 import type { ConversationDetailResponse, Message } from "@/lib/contracts/conversations";
 import { DeleteConversationDialog } from "@/features/conversations/delete-conversation-dialog";
+import { RenameConversationDialog } from "@/features/conversations/rename-conversation-dialog";
 import { ChatEmptyState } from "./chat-empty-state";
 import { ChatHeader } from "./chat-header";
 import { ChatSkeleton } from "./chat-skeleton";
@@ -79,6 +80,7 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
   const [draft, setDraft] = useState("");
   const [pending, setPending] = useState<PendingMessage | null>(null);
   const [failure, setFailure] = useState<Failure | null>(null);
+  const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   // State updates are asynchronous; the ref blocks a second send immediately.
   const inFlight = useRef(false);
@@ -169,14 +171,19 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
       title={summary?.title ?? "New conversation"}
       actions={
         summary ? (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="shrink-0 text-danger hover:bg-danger-soft"
-            onClick={() => setConfirmingDelete(true)}
-          >
-            Delete
-          </Button>
+          <div className="flex shrink-0 items-center gap-1">
+            <Button variant="ghost" size="sm" onClick={() => setRenaming(true)}>
+              Rename
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-danger hover:bg-danger-soft"
+              onClick={() => setConfirmingDelete(true)}
+            >
+              Delete
+            </Button>
+          </div>
         ) : null
       }
       scrollRef={scroll.ref}
@@ -224,6 +231,12 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
       ) : (
         <MessageList messages={visibleMessages}>{pending ? <TypingIndicator /> : null}</MessageList>
       )}
+
+      <RenameConversationDialog
+        conversation={renaming ? summary : null}
+        onClose={() => setRenaming(false)}
+        onRenamed={setSummary}
+      />
 
       <DeleteConversationDialog
         conversation={confirmingDelete ? summary : null}

@@ -9,6 +9,7 @@ import { useAsyncData } from "@/lib/api/use-async-data";
 import type { ConversationSummary } from "@/lib/contracts/conversations";
 import { formatDateTime } from "@/lib/utils/format";
 import { DeleteConversationDialog } from "./delete-conversation-dialog";
+import { RenameConversationDialog } from "./rename-conversation-dialog";
 
 function ListSkeleton() {
   return (
@@ -30,6 +31,7 @@ function ListSkeleton() {
  */
 export function ConversationList() {
   const conversations = useAsyncData("conversations", (signal) => listConversations(signal));
+  const [toRename, setToRename] = useState<ConversationSummary | null>(null);
   const [toDelete, setToDelete] = useState<ConversationSummary | null>(null);
   const regionRef = useRef<HTMLDivElement>(null);
 
@@ -65,18 +67,18 @@ export function ConversationList() {
         <>
           <div
             aria-hidden="true"
-            className="hidden grid-cols-[1fr_7rem_12rem_5.5rem] gap-4 px-4 pb-2 text-xs font-medium text-ink-muted md:grid"
+            className="hidden grid-cols-[1fr_7rem_12rem_10.5rem] gap-4 px-4 pb-2 text-xs font-medium text-ink-muted md:grid"
           >
             <span>Conversation</span>
             <span>Messages</span>
             <span>Last activity</span>
-            <span />
+            <span>Actions</span>
           </div>
           <ul className="space-y-2">
             {items.map((conversation) => (
               <li
                 key={conversation.id}
-                className="grid gap-x-4 gap-y-1 rounded-card border border-line bg-surface p-4 md:grid-cols-[1fr_7rem_12rem_5.5rem] md:items-center md:py-3"
+                className="grid gap-x-4 gap-y-1 rounded-card border border-line bg-surface p-4 md:grid-cols-[1fr_7rem_12rem_10.5rem] md:items-center md:py-3"
               >
                 <Link
                   href={`/chat/${conversation.id}`}
@@ -94,7 +96,15 @@ export function ConversationList() {
                     {formatDateTime(conversation.updatedAt)}
                   </time>
                 </p>
-                <div className="mt-2 md:mt-0 md:text-right">
+                <div className="mt-2 flex gap-1 md:mt-0 md:justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    aria-label={`Rename conversation: ${conversation.title}`}
+                    onClick={() => setToRename(conversation)}
+                  >
+                    Rename
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -110,6 +120,18 @@ export function ConversationList() {
           </ul>
         </>
       )}
+
+      <RenameConversationDialog
+        conversation={toRename}
+        onClose={() => setToRename(null)}
+        onRenamed={(updated) => {
+          conversations.setData((current) => ({
+            conversations: current.conversations
+              .map((item) => (item.id === updated.id ? updated : item))
+              .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
+          }));
+        }}
+      />
 
       <DeleteConversationDialog
         conversation={toDelete}

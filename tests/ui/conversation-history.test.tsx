@@ -155,6 +155,100 @@ describe("ConversationList", () => {
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: closures.title, hidden: true })).toBeInTheDocument();
   });
+
+  it("renames a conversation and updates the list", async () => {
+    const onRename = vi.fn();
+    const renamed = {
+      ...closures,
+      title: "Closures and lexical scope",
+      updatedAt: "2026-11-08T10:00:00.000Z",
+    };
+
+    server.use(
+      http.get(listUrl, () => ok({ conversations: [sorting, closures] })),
+      http.patch(api(`/api/conversations/${closures.id}`), async ({ request }) => {
+        onRename(await request.json());
+        return ok({ conversation: renamed });
+      }),
+    );
+    renderList();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Rename conversation: ${closures.title}` }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Rename conversation" });
+    const input = within(dialog).getByLabelText("Conversation title");
+    expect(input).toHaveValue(closures.title);
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "Closures and lexical scope");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole("link", { name: closures.title })).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("link", { name: "Closures and lexical scope" })).toBeInTheDocument();
+    expect(onRename).toHaveBeenCalledWith({ title: "Closures and lexical scope" });
+    expect(await screen.findByText("Conversation renamed")).toBeInTheDocument();
+    expect(screen.getAllByRole("listitem")[0]).toHaveTextContent("Closures and lexical scope");
+  });
+
+  it("rejects an empty conversation title", async () => {
+    const onRename = vi.fn();
+
+    server.use(
+      http.get(listUrl, () => ok({ conversations: [closures] })),
+      http.patch(api(`/api/conversations/${closures.id}`), onRename),
+    );
+    renderList();
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: `Rename conversation: ${closures.title}` }),
+    );
+
+    const dialog = screen.getByRole("dialog", { name: "Rename conversation" });
+    await userEvent.clear(within(dialog).getByLabelText("Conversation title"));
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+
+    expect(
+      await within(dialog).findByText("Enter a title for the conversation."),
+    ).toBeInTheDocument();
+    expect(onRename).not.toHaveBeenCalled();
+  });
+});
+
+describe("Renaming the open conversation", () => {
+  it("updates the chat header title", async () => {
+    const renamed = {
+      ...closures,
+      title: "Closures and lexical scope",
+      updatedAt: "2026-11-08T10:00:00.000Z",
+    };
+
+    server.use(
+      http.get(api(`/api/conversations/${closures.id}`), () => ok(conversationDetailFixture)),
+      http.patch(api(`/api/conversations/${closures.id}`), () => ok({ conversation: renamed })),
+    );
+
+    render(
+      <ToastProvider>
+        <ChatView conversationId={closures.id} />
+      </ToastProvider>,
+    );
+
+    await userEvent.click(await screen.findByRole("button", { name: "Rename" }));
+    const dialog = screen.getByRole("dialog", { name: "Rename conversation" });
+    const input = within(dialog).getByLabelText("Conversation title");
+
+    await userEvent.clear(input);
+    await userEvent.type(input, "Closures and lexical scope");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save changes" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "Closures and lexical scope" }),
+    ).toBeInTheDocument();
+  });
 });
 
 describe("Deleting the open conversation", () => {
