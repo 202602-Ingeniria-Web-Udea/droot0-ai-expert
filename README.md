@@ -17,6 +17,7 @@ The assistant is intentionally specialized. It answers programming and software 
 - Protected routes and role-based access.
 - Personal conversation creation, continuation, renaming, export, and deletion.
 - Personal conversation history with search by title or message content.
+- Helpful / not helpful feedback on assistant responses.
 - ADMIN user management and role editing.
 - ADMIN assistant configuration for the system prompt, model, temperature, and token limit.
 - ADMIN application statistics.
@@ -100,22 +101,26 @@ The PostgreSQL schema is managed with Prisma.
 | `User`            | Application profile linked to the Supabase Auth user | `id`, `email`, `name`, `role`, timestamps                                                     |
 | `Conversation`    | A conversation owned by one user                     | `id`, `userId`, `title`, timestamps                                                           |
 | `Message`         | A message inside a conversation                      | `id`, `conversationId`, `role`, `content`, `createdAt`                                        |
+| `MessageFeedback` | One user's rating of an assistant message            | `id`, `messageId`, `userId`, `value`, timestamps                                              |
 | `AssistantConfig` | Singleton assistant configuration                    | `id`, `name`, `systemPrompt`, `model`, `temperature`, `maxTokens`, `updatedById`, `updatedAt` |
 
 Enums:
 
 - `Role`: `USER`, `ADMIN`
 - `MessageRole`: `USER`, `ASSISTANT`
+- `FeedbackValue`: `UP`, `DOWN`
 
 Relationships and deletion rules:
 
 - A conversation belongs to one user.
 - A message belongs to one conversation.
-- Deleting a user cascades to their conversations.
+- A user can rate each assistant message at most once.
+- Deleting a user cascades to their conversations and feedback.
 - Deleting a conversation cascades to its messages.
+- Deleting a message cascades to its feedback.
 - Deleting the admin who last updated the assistant configuration sets `updatedById` to `NULL`.
 
-Indexes support conversation ownership and message ordering.
+Indexes support conversation ownership, message ordering, and one rating per user and message.
 
 ## Authentication and authorization
 
@@ -169,22 +174,23 @@ The prompt can be updated by an ADMIN through the assistant configuration API.
 
 ## API summary
 
-| Method   | Endpoint                    | Purpose                            |
-| -------- | --------------------------- | ---------------------------------- |
-| `POST`   | `/api/auth/register`        | Create an account                  |
-| `POST`   | `/api/auth/login`           | Create a session                   |
-| `POST`   | `/api/auth/logout`          | Clear the session                  |
-| `GET`    | `/api/auth/me`              | Current user and role              |
-| `GET`    | `/api/conversations`        | List or search owned conversations |
-| `GET`    | `/api/conversations/:id`    | Read an owned conversation         |
-| `PATCH`  | `/api/conversations/:id`    | Rename an owned conversation       |
-| `DELETE` | `/api/conversations/:id`    | Delete an owned conversation       |
-| `POST`   | `/api/chat`                 | Send a message to DeepSeek         |
-| `GET`    | `/api/admin/users`          | List users                         |
-| `PATCH`  | `/api/admin/users/:id/role` | Change a user role                 |
-| `GET`    | `/api/admin/assistant`      | Read assistant configuration       |
-| `PUT`    | `/api/admin/assistant`      | Update assistant configuration     |
-| `GET`    | `/api/admin/stats`          | Read application statistics        |
+| Method   | Endpoint                     | Purpose                             |
+| -------- | ---------------------------- | ----------------------------------- |
+| `POST`   | `/api/auth/register`         | Create an account                   |
+| `POST`   | `/api/auth/login`            | Create a session                    |
+| `POST`   | `/api/auth/logout`           | Clear the session                   |
+| `GET`    | `/api/auth/me`               | Current user and role               |
+| `GET`    | `/api/conversations`         | List or search owned conversations  |
+| `GET`    | `/api/conversations/:id`     | Read an owned conversation          |
+| `PATCH`  | `/api/conversations/:id`     | Rename an owned conversation        |
+| `DELETE` | `/api/conversations/:id`     | Delete an owned conversation        |
+| `POST`   | `/api/chat`                  | Send a message to DeepSeek          |
+| `PUT`    | `/api/messages/:id/feedback` | Rate or unrate an assistant message |
+| `GET`    | `/api/admin/users`           | List users                          |
+| `PATCH`  | `/api/admin/users/:id/role`  | Change a user role                  |
+| `GET`    | `/api/admin/assistant`       | Read assistant configuration        |
+| `PUT`    | `/api/admin/assistant`       | Update assistant configuration      |
+| `GET`    | `/api/admin/stats`           | Read application statistics         |
 
 ## Local setup
 
@@ -341,7 +347,6 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 ## Known limitations
 
 - No streaming AI responses.
-- No conversation search or export.
 - No dedicated application-level chat rate limiter; provider rate limits are handled.
 - No Content Security Policy yet.
 - Admin user listing has no pagination.
@@ -350,7 +355,6 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 
 ## Future improvements
 
-- Message feedback.
 - Streaming responses.
 - Application-level usage quotas.
 - Committed Playwright end-to-end tests.
@@ -365,6 +369,7 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 - [x] DeepSeek returns a live response.
 - [x] Markdown and code blocks render safely.
 - [x] Conversation history opens and continues conversations.
+- [x] Assistant responses can be rated helpful or not helpful.
 - [x] Conversation deletion requires confirmation.
 - [x] Admin users and roles load.
 - [x] Assistant configuration loads.

@@ -63,3 +63,23 @@ export function CloseIcon(props: IconProps) {
     </Icon>
   );
 }
+
+export function ThumbsUpIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <path d="M7.5 8.75 10.25 3.5a1.75 1.75 0 0 1 1.75 1.75v2h3.25a1.5 1.5 0 0 1 1.46 1.84l-1 4.5a1.5 1.5 0 0 1-1.46 1.16H7.5" />
+      <rect x="3.25" y="8.75" width="3" height="6" rx="0.75" />
+    </Icon>
+  );
+}
+
+export function ThumbsDownIcon(props: IconProps) {
+  return (
+    <Icon {...props}>
+      <g transform="rotate(180 10 10)">
+        <path d="M7.5 8.75 10.25 3.5a1.75 1.75 0 0 1 1.75 1.75v2h3.25a1.5 1.5 0 0 1 1.46 1.84l-1 4.5a1.5 1.5 0 0 1-1.46 1.16H7.5" />
+        <rect x="3.25" y="8.75" width="3" height="6" rx="0.75" />
+      </g>
+    </Icon>
+  );
+}

@@ -39,6 +39,7 @@ export const userMessageFixture: Message = {
   role: "USER",
   content: "Can you explain JavaScript closures with a small example?",
   createdAt: "2026-11-06T09:05:00.000Z",
+  feedback: null,
 };
 
 export const assistantMessageFixture: Message = {
@@ -47,6 +48,7 @@ export const assistantMessageFixture: Message = {
   content:
     "A closure is a function that keeps access to variables from the scope where it was created, even after that outer function has returned.",
   createdAt: "2026-11-06T09:06:00.000Z",
+  feedback: null,
 };
 
 export const conversationDetailFixture: ConversationDetailResponse = {

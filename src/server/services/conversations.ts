@@ -1,6 +1,16 @@
 import "server-only";
-import type { Conversation, Message, Prisma } from "@prisma/client";
-import type { ConversationSummary, Message as MessageDto } from "@/lib/contracts/conversations";
+import type {
+  Conversation,
+  Message,
+  MessageFeedback as MessageFeedbackRecord,
+  Prisma,
+} from "@prisma/client";
+import type {
+  ConversationSummary,
+  FeedbackValue,
+  Message as MessageDto,
+  MessageFeedback as MessageFeedbackDto,
+} from "@/lib/contracts/conversations";
 import { prisma } from "@/server/db/prisma";
 import { ApiError } from "@/server/http/api-error";
 
@@ -17,6 +27,25 @@ function notFound(): never {
   throw new ApiError(404, "NOT_FOUND", "Conversation not found.");
 }
 
+function messageNotFound(): never {
+  throw new ApiError(404, "NOT_FOUND", "Message not found.");
+}
+
+type MessageFeedbackFields = Pick<MessageFeedbackRecord, "value" | "createdAt" | "updatedAt">;
+
+/** A message with the current user's feedback, if any. */
+export type MessageWithFeedback = Message & {
+  feedback?: MessageFeedbackFields[];
+};
+
+export function toFeedbackDto(feedback: MessageFeedbackFields): MessageFeedbackDto {
+  return {
+    value: feedback.value,
+    createdAt: feedback.createdAt.toISOString(),
+    updatedAt: feedback.updatedAt.toISOString(),
+  };
+}
+
 export function toConversationSummary(
   conversation: ConversationWithMessageCount,
 ): ConversationSummary {
@@ -29,12 +58,15 @@ export function toConversationSummary(
   };
 }
 
-export function toMessageDto(message: Message): MessageDto {
+export function toMessageDto(message: MessageWithFeedback): MessageDto {
+  const feedback = message.feedback?.[0];
+
   return {
     id: message.id,
     role: message.role,
     content: message.content,
     createdAt: message.createdAt.toISOString(),
+    feedback: feedback ? toFeedbackDto(feedback) : null,
   };
 }
 
@@ -110,6 +142,16 @@ export async function getConversationDetail(userId: string, conversationId: stri
     where: { conversationId },
     orderBy: [{ createdAt: "desc" }, { id: "desc" }],
     take: MESSAGE_DETAIL_LIMIT,
+    include: {
+      feedback: {
+        where: { userId },
+        select: {
+          value: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      },
+    },
   });
 
   return {
@@ -162,4 +204,46 @@ export async function deleteConversation(userId: string, conversationId: string)
   if (result.count === 0) {
     notFound();
   }
+}
+
+/**
+ * Sets or removes the current user's feedback on one of their assistant
+ * messages. Messages the user does not own, and user-authored messages, are
+ * reported as not found so their existence is not leaked.
+ */
+export async function setMessageFeedback(
+  userId: string,
+  messageId: string,
+  value: FeedbackValue | null,
+): Promise<MessageFeedbackDto | null> {
+  const message = await prisma.message.findFirst({
+    where: {
+      id: messageId,
+      role: "ASSISTANT",
+      conversation: { userId },
+    },
+    select: { id: true },
+  });
+
+  if (!message) {
+    messageNotFound();
+  }
+
+  if (value === null) {
+    await prisma.messageFeedback.deleteMany({
+      where: { messageId, userId },
+    });
+
+    return null;
+  }
+
+  const feedback = await prisma.messageFeedback.upsert({
+    where: {
+      messageId_userId: { messageId, userId },
+    },
+    create: { messageId, userId, value },
+    update: { value },
+  });
+
+  return toFeedbackDto(feedback);
 }

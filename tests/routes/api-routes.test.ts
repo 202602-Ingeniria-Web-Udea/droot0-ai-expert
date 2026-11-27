@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   listAdminUsers: vi.fn(),
   updateAdminUserRole: vi.fn(),
   getAdminStats: vi.fn(),
+  setMessageFeedback: vi.fn(),
 }));
 
 vi.mock("@/server/auth/current-user", () => ({
@@ -34,11 +35,16 @@ vi.mock("@/server/services/admin-stats", () => ({
   getAdminStats: mocks.getAdminStats,
 }));
 
+vi.mock("@/server/services/conversations", () => ({
+  setMessageFeedback: mocks.setMessageFeedback,
+}));
+
 import { GET as getAdminStats } from "@/app/api/admin/stats/route";
 import { PATCH as patchUserRole } from "@/app/api/admin/users/[id]/role/route";
 import { GET as getAdminUsers } from "@/app/api/admin/users/route";
 import { GET as getMe } from "@/app/api/auth/me/route";
 import { POST as postChat } from "@/app/api/chat/route";
+import { PUT as putMessageFeedback } from "@/app/api/messages/[id]/feedback/route";
 import { ApiError } from "@/server/http/api-error";
 
 function jsonRequest(url: string, body: unknown, origin = "http://localhost:3000") {
@@ -220,5 +226,51 @@ describe("API route handlers", () => {
     );
 
     expect(response.status).toBe(409);
+  });
+
+  it("saves feedback for the signed-in user's assistant message", async () => {
+    const feedback = {
+      value: "UP",
+      createdAt: "2026-11-08T10:00:00.000Z",
+      updatedAt: "2026-11-08T10:00:00.000Z",
+    };
+
+    mocks.requireUser.mockResolvedValue(makeUser());
+    mocks.setMessageFeedback.mockResolvedValue(feedback);
+
+    const response = await putMessageFeedback(
+      jsonRequest(`http://localhost:3000/api/messages/${testIds.message}/feedback`, {
+        value: "UP",
+      }),
+      { params: Promise.resolve({ id: testIds.message }) },
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(200);
+    expect(body.data.feedback).toEqual(feedback);
+    expect(mocks.setMessageFeedback).toHaveBeenCalledWith(testIds.user, testIds.message, "UP");
+  });
+
+  it("removes feedback and rejects an unknown value", async () => {
+    mocks.requireUser.mockResolvedValue(makeUser());
+    mocks.setMessageFeedback.mockResolvedValue(null);
+
+    const removal = await putMessageFeedback(
+      jsonRequest(`http://localhost:3000/api/messages/${testIds.message}/feedback`, {
+        value: null,
+      }),
+      { params: Promise.resolve({ id: testIds.message }) },
+    );
+    expect(removal.status).toBe(200);
+    expect(await removal.json()).toEqual({ data: { feedback: null } });
+
+    const invalid = await putMessageFeedback(
+      jsonRequest(`http://localhost:3000/api/messages/${testIds.message}/feedback`, {
+        value: "LOVE",
+      }),
+      { params: Promise.resolve({ id: testIds.message }) },
+    );
+    expect(invalid.status).toBe(422);
+    expect(mocks.setMessageFeedback).toHaveBeenCalledTimes(1);
   });
 });

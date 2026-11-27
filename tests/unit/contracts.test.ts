@@ -4,7 +4,11 @@ import {
   updateUserRoleRequestSchema,
 } from "@/lib/contracts/admin";
 import { chatRequestSchema } from "@/lib/contracts/chat";
-import { conversationListQuerySchema } from "@/lib/contracts/conversations";
+import {
+  conversationListQuerySchema,
+  messageSchema,
+  setMessageFeedbackRequestSchema,
+} from "@/lib/contracts/conversations";
 
 describe("shared request contracts", () => {
   it("accepts a valid chat request", () => {
@@ -67,5 +71,36 @@ describe("shared request contracts", () => {
     });
     expect(conversationListQuerySchema.safeParse({ limit: "101" }).success).toBe(false);
     expect(conversationListQuerySchema.safeParse({ q: "x".repeat(201) }).success).toBe(false);
+  });
+
+  it("validates feedback values and allows removal", () => {
+    expect(setMessageFeedbackRequestSchema.parse({ value: "UP" })).toEqual({ value: "UP" });
+    expect(setMessageFeedbackRequestSchema.parse({ value: "DOWN" })).toEqual({ value: "DOWN" });
+    expect(setMessageFeedbackRequestSchema.parse({ value: null })).toEqual({ value: null });
+    expect(setMessageFeedbackRequestSchema.safeParse({ value: "LOVE" }).success).toBe(false);
+    expect(setMessageFeedbackRequestSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("requires a nullable feedback field on messages", () => {
+    const message = {
+      id: "d5a3e4f6-7b8c-4d9e-af10-2b3c4d5e6f70",
+      role: "ASSISTANT",
+      content: "Answer",
+      createdAt: "2026-11-06T09:06:00.000Z",
+      feedback: null,
+    };
+
+    expect(messageSchema.safeParse(message).success).toBe(true);
+    expect(messageSchema.safeParse({ ...message, feedback: undefined }).success).toBe(false);
+    expect(
+      messageSchema.safeParse({
+        ...message,
+        feedback: {
+          value: "UP",
+          createdAt: "2026-11-06T09:07:00.000Z",
+          updatedAt: "2026-11-06T09:07:00.000Z",
+        },
+      }).success,
+    ).toBe(true);
   });
 });

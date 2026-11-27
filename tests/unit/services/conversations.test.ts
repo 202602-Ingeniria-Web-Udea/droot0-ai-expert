@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { makeConversationWithCount, makeMessage, testIds } from "../../helpers/factories";
+import {
+  makeConversationWithCount,
+  makeMessage,
+  makeMessageFeedback,
+  testIds,
+} from "../../helpers/factories";
 
 const mocks = vi.hoisted(() => ({
   conversation: {
@@ -11,6 +16,11 @@ const mocks = vi.hoisted(() => ({
   },
   message: {
     findMany: vi.fn(),
+    findFirst: vi.fn(),
+  },
+  messageFeedback: {
+    upsert: vi.fn(),
+    deleteMany: vi.fn(),
   },
 }));
 
@@ -18,6 +28,7 @@ vi.mock("@/server/db/prisma", () => ({
   prisma: {
     conversation: mocks.conversation,
     message: mocks.message,
+    messageFeedback: mocks.messageFeedback,
   },
 }));
 
@@ -26,6 +37,7 @@ import {
   getConversationDetail,
   listConversations,
   renameConversation,
+  setMessageFeedback,
 } from "@/server/services/conversations";
 
 describe("conversation service", () => {
@@ -139,6 +151,100 @@ describe("conversation service", () => {
         take: 200,
       }),
     );
+  });
+
+  it("includes the current user's feedback in message details", async () => {
+    const conversation = makeConversationWithCount();
+    const assistantMessage = makeMessage({
+      role: "ASSISTANT",
+      content: "Rated answer",
+    });
+    const feedback = makeMessageFeedback({
+      messageId: assistantMessage.id,
+      value: "DOWN",
+      createdAt: new Date("2026-11-08T11:00:00.000Z"),
+      updatedAt: new Date("2026-11-08T11:05:00.000Z"),
+    });
+
+    mocks.conversation.findFirst.mockResolvedValue(conversation);
+    mocks.message.findMany.mockResolvedValue([{ ...assistantMessage, feedback: [feedback] }]);
+
+    const result = await getConversationDetail(testIds.user, testIds.conversation);
+
+    expect(mocks.message.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        include: {
+          feedback: {
+            where: { userId: testIds.user },
+            select: {
+              value: true,
+              createdAt: true,
+              updatedAt: true,
+            },
+          },
+        },
+      }),
+    );
+    expect(result.messages[0]?.feedback).toEqual({
+      value: "DOWN",
+      createdAt: "2026-11-08T11:00:00.000Z",
+      updatedAt: "2026-11-08T11:05:00.000Z",
+    });
+  });
+
+  it("sets feedback only for an owned assistant message", async () => {
+    const message = makeMessage({ role: "ASSISTANT" });
+    const feedback = makeMessageFeedback({ messageId: message.id, value: "UP" });
+
+    mocks.message.findFirst.mockResolvedValue({ id: message.id });
+    mocks.messageFeedback.upsert.mockResolvedValue(feedback);
+
+    const result = await setMessageFeedback(testIds.user, message.id, "UP");
+
+    expect(mocks.message.findFirst).toHaveBeenCalledWith({
+      where: {
+        id: message.id,
+        role: "ASSISTANT",
+        conversation: { userId: testIds.user },
+      },
+      select: { id: true },
+    });
+    expect(mocks.messageFeedback.upsert).toHaveBeenCalledWith({
+      where: {
+        messageId_userId: { messageId: message.id, userId: testIds.user },
+      },
+      create: { messageId: message.id, userId: testIds.user, value: "UP" },
+      update: { value: "UP" },
+    });
+    expect(result).toEqual({
+      value: "UP",
+      createdAt: feedback.createdAt.toISOString(),
+      updatedAt: feedback.updatedAt.toISOString(),
+    });
+  });
+
+  it("removes feedback when the value is null", async () => {
+    const message = makeMessage({ role: "ASSISTANT" });
+
+    mocks.message.findFirst.mockResolvedValue({ id: message.id });
+    mocks.messageFeedback.deleteMany.mockResolvedValue({ count: 1 });
+
+    await expect(setMessageFeedback(testIds.user, message.id, null)).resolves.toBeNull();
+    expect(mocks.messageFeedback.deleteMany).toHaveBeenCalledWith({
+      where: { messageId: message.id, userId: testIds.user },
+    });
+    expect(mocks.messageFeedback.upsert).not.toHaveBeenCalled();
+  });
+
+  it("returns 404 for messages the user cannot rate", async () => {
+    mocks.message.findFirst.mockResolvedValue(null);
+
+    await expect(setMessageFeedback(testIds.user, testIds.message, "UP")).rejects.toMatchObject({
+      status: 404,
+      code: "NOT_FOUND",
+    });
+    expect(mocks.messageFeedback.upsert).not.toHaveBeenCalled();
+    expect(mocks.messageFeedback.deleteMany).not.toHaveBeenCalled();
   });
 
   it("returns 404 when renaming an unowned conversation", async () => {

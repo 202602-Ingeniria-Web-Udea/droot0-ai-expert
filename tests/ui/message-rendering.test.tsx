@@ -2,7 +2,7 @@
 import "./setup";
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { MessageList } from "@/features/chat/message-list";
 import type { Message } from "@/lib/contracts/conversations";
 
@@ -12,6 +12,7 @@ function message(role: Message["role"], content: string, index = 0): Message {
     role,
     content,
     createdAt: "2026-11-06T09:06:00.000Z",
+    feedback: null,
   };
 }
 
@@ -135,5 +136,90 @@ describe("MessageList", () => {
 
     expect(screen.queryByRole("heading")).not.toBeInTheDocument();
     expect(screen.getByText(/# not a heading/)).toHaveTextContent("<b>not bold</b>");
+  });
+
+  it("rates assistant messages", async () => {
+    const user = userEvent.setup();
+    const onFeedbackChange = vi.fn();
+    render(
+      <MessageList
+        messages={[message("USER", "Question", 0), message("ASSISTANT", "Answer", 1)]}
+        onFeedbackChange={onFeedbackChange}
+      />,
+    );
+
+    const helpful = screen.getByRole("button", { name: "Helpful" });
+    const notHelpful = screen.getByRole("button", { name: "Not helpful" });
+
+    expect(helpful).toHaveAttribute("aria-pressed", "false");
+    expect(notHelpful).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(helpful);
+    expect(onFeedbackChange).toHaveBeenLastCalledWith("d5a3e4f6-7b8c-4d9e-af10-2b3c4d5e6f71", "UP");
+
+    await user.click(notHelpful);
+    expect(onFeedbackChange).toHaveBeenLastCalledWith(
+      "d5a3e4f6-7b8c-4d9e-af10-2b3c4d5e6f71",
+      "DOWN",
+    );
+
+    // Only one set of controls, for the assistant message.
+    expect(screen.getAllByRole("button", { name: "Helpful" })).toHaveLength(1);
+  });
+
+  it("removes the rating when the selected option is clicked again", async () => {
+    const user = userEvent.setup();
+    const onFeedbackChange = vi.fn();
+    const rated: Message = {
+      ...message("ASSISTANT", "Answer"),
+      feedback: {
+        value: "UP",
+        createdAt: "2026-11-06T09:07:00.000Z",
+        updatedAt: "2026-11-06T09:07:00.000Z",
+      },
+    };
+
+    render(<MessageList messages={[rated]} onFeedbackChange={onFeedbackChange} />);
+
+    expect(screen.getByRole("button", { name: "Helpful" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "Helpful" }));
+
+    expect(onFeedbackChange).toHaveBeenCalledWith(rated.id, null);
+  });
+
+  it("reflects the saved rating and disables the controls while saving", () => {
+    const rated: Message = {
+      ...message("ASSISTANT", "Answer"),
+      feedback: {
+        value: "DOWN",
+        createdAt: "2026-11-06T09:07:00.000Z",
+        updatedAt: "2026-11-06T09:07:00.000Z",
+      },
+    };
+
+    render(
+      <MessageList
+        messages={[rated]}
+        feedbackPending={new Set([rated.id])}
+        onFeedbackChange={vi.fn()}
+      />,
+    );
+
+    const group = screen.getByRole("group", { name: "Rate this response" });
+    expect(group).toHaveAttribute("aria-busy", "true");
+    expect(screen.getByRole("button", { name: "Not helpful" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(screen.getByRole("button", { name: "Helpful" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Not helpful" })).toBeDisabled();
+    expect(screen.getByRole("status")).toHaveTextContent("Saving feedback");
+  });
+
+  it("hides feedback controls when no handler is available", () => {
+    render(<MessageList messages={[message("ASSISTANT", "Answer")]} />);
+
+    expect(screen.queryByRole("group", { name: "Rate this response" })).not.toBeInTheDocument();
   });
 });

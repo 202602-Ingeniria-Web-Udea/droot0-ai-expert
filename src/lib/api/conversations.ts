@@ -3,6 +3,8 @@ import {
   conversationListResponseSchema,
   deleteConversationResponseSchema,
   renameConversationResponseSchema,
+  setMessageFeedbackResponseSchema,
+  type FeedbackValue,
 } from "@/lib/contracts/conversations";
 import { apiRequest } from "./client";
 
@@ -41,5 +43,14 @@ export function deleteConversation(id: string) {
   return apiRequest(`/api/conversations/${encodeURIComponent(id)}`, {
     method: "DELETE",
     schema: deleteConversationResponseSchema,
+  });
+}
+
+/** Rates an assistant message, or removes the rating when `value` is null. */
+export function setMessageFeedback(id: string, value: FeedbackValue | null) {
+  return apiRequest(`/api/messages/${encodeURIComponent(id)}/feedback`, {
+    method: "PUT",
+    body: { value },
+    schema: setMessageFeedbackResponseSchema,
   });
 }

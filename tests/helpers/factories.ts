@@ -1,4 +1,4 @@
-import type { AssistantConfig, Conversation, Message, User } from "@prisma/client";
+import type { AssistantConfig, Conversation, Message, MessageFeedback, User } from "@prisma/client";
 
 const createdAt = new Date("2026-11-08T10:00:00.000Z");
 const updatedAt = new Date("2026-11-08T10:05:00.000Z");
@@ -51,6 +51,18 @@ export function makeMessage(overrides: Partial<Message> = {}): Message {
     role: "USER",
     content: "Test message",
     createdAt,
+    ...overrides,
+  };
+}
+
+export function makeMessageFeedback(overrides: Partial<MessageFeedback> = {}): MessageFeedback {
+  return {
+    id: "e6b4f5a7-8c9d-4eaf-b021-3c4d5e6f7a81",
+    messageId: testIds.message,
+    userId: testIds.user,
+    value: "UP",
+    createdAt,
+    updatedAt,
     ...overrides,
   };
 }

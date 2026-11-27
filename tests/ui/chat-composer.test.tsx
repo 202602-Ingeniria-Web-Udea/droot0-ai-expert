@@ -47,12 +47,14 @@ const followUp: ChatResponse = {
     role: "USER",
     content: "Show me a counter example.",
     createdAt: "2026-11-06T09:10:00.000Z",
+    feedback: null,
   },
   assistantMessage: {
     id: "f7c5a6b8-9dae-4fb0-8132-4d5e6f7a8b92",
     role: "ASSISTANT",
     content: "Here is a counter built with a closure.",
     createdAt: "2026-11-06T09:10:05.000Z",
+    feedback: null,
   },
 };
 

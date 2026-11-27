@@ -17,11 +17,15 @@ import {
 } from "@/components/ui";
 import { sendMessage } from "@/lib/api/chat";
 import { isApiClientError } from "@/lib/api/client";
-import { getConversation } from "@/lib/api/conversations";
+import { getConversation, setMessageFeedback } from "@/lib/api/conversations";
 import { describeApiError, isRetryableError } from "@/lib/api/errors";
 import { redirectToLogin } from "@/lib/api/redirect";
 import { useAsyncData } from "@/lib/api/use-async-data";
-import type { ConversationDetailResponse, Message } from "@/lib/contracts/conversations";
+import type {
+  ConversationDetailResponse,
+  FeedbackValue,
+  Message,
+} from "@/lib/contracts/conversations";
 import {
   downloadConversationExport,
   type ConversationExportFormat,
@@ -98,8 +102,11 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
   const [failure, setFailure] = useState<Failure | null>(null);
   const [renaming, setRenaming] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [feedbackPending, setFeedbackPending] = useState<ReadonlySet<string>>(new Set());
   // State updates are asynchronous; the ref blocks a second send immediately.
   const inFlight = useRef(false);
+  // Likewise for feedback: ignore clicks while the same message is saving.
+  const feedbackInFlight = useRef(new Set<string>());
 
   const hasMessages = messages.length > 0 || pending !== null;
   const scroll = useStickToBottom<HTMLDivElement>(
@@ -170,6 +177,77 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
     void send(content);
   }
 
+  /**
+   * Saves the reader's rating for one assistant message. The selection is
+   * shown immediately and restored if the request fails.
+   */
+  async function changeFeedback(messageId: string, value: FeedbackValue | null) {
+    if (feedbackInFlight.current.has(messageId)) {
+      return;
+    }
+
+    const current = messages.find((message) => message.id === messageId);
+
+    if (!current || current.role !== "ASSISTANT") {
+      return;
+    }
+
+    const previous = current.feedback;
+    const now = new Date().toISOString();
+
+    feedbackInFlight.current.add(messageId);
+    setFeedbackPending((pending) => new Set(pending).add(messageId));
+    setMessages((items) =>
+      items.map((message) =>
+        message.id === messageId
+          ? {
+              ...message,
+              feedback: value
+                ? {
+                    value,
+                    createdAt: previous?.createdAt ?? now,
+                    updatedAt: now,
+                  }
+                : null,
+            }
+          : message,
+      ),
+    );
+
+    try {
+      const result = await setMessageFeedback(messageId, value);
+      setMessages((items) =>
+        items.map((message) =>
+          message.id === messageId ? { ...message, feedback: result.feedback } : message,
+        ),
+      );
+    } catch (error) {
+      setMessages((items) =>
+        items.map((message) =>
+          message.id === messageId ? { ...message, feedback: previous } : message,
+        ),
+      );
+
+      if (isApiClientError(error) && error.status === 401) {
+        redirectToLogin();
+        return;
+      }
+
+      toast({
+        variant: "error",
+        title: "Feedback was not saved",
+        description: describeApiError(error),
+      });
+    } finally {
+      feedbackInFlight.current.delete(messageId);
+      setFeedbackPending((pending) => {
+        const next = new Set(pending);
+        next.delete(messageId);
+        return next;
+      });
+    }
+  }
+
   function exportConversation(format: ConversationExportFormat) {
     if (!summary) {
       return;
@@ -189,6 +267,7 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
           role: "USER",
           content: pending.content,
           createdAt: pending.createdAt,
+          feedback: null,
         },
       ]
     : [];
@@ -272,7 +351,13 @@ function Conversation({ initial }: { initial?: ConversationDetailResponse }) {
       {visibleMessages.length === 0 ? (
         <ChatEmptyState onSelect={setDraft} />
       ) : (
-        <MessageList messages={visibleMessages}>{pending ? <TypingIndicator /> : null}</MessageList>
+        <MessageList
+          messages={visibleMessages}
+          feedbackPending={feedbackPending}
+          onFeedbackChange={(messageId, value) => void changeFeedback(messageId, value)}
+        >
+          {pending ? <TypingIndicator /> : null}
+        </MessageList>
       )}
 
       <RenameConversationDialog

@@ -5,11 +5,23 @@ export const conversationTitleSchema = z.string().trim().min(1).max(120);
 export const messageContentSchema = z.string().trim().min(1).max(8000);
 export const storedMessageContentSchema = z.string().min(1).max(50000);
 
+export const feedbackValueSchema = z.enum(["UP", "DOWN"]);
+export type FeedbackValue = z.infer<typeof feedbackValueSchema>;
+
+export const messageFeedbackSchema = z.object({
+  value: feedbackValueSchema,
+  createdAt: isoDateTimeSchema,
+  updatedAt: isoDateTimeSchema,
+});
+export type MessageFeedback = z.infer<typeof messageFeedbackSchema>;
+
 export const messageSchema = z.object({
   id: uuidSchema,
   role: messageRoleSchema,
   content: storedMessageContentSchema,
   createdAt: isoDateTimeSchema,
+  /** The current user's feedback, or null when they have not rated the message. */
+  feedback: messageFeedbackSchema.nullable(),
 });
 export type Message = z.infer<typeof messageSchema>;
 
@@ -53,3 +65,14 @@ export const deleteConversationResponseSchema = z.object({
   success: z.literal(true),
 });
 export type DeleteConversationResponse = z.infer<typeof deleteConversationResponseSchema>;
+
+export const setMessageFeedbackRequestSchema = z.object({
+  /** null removes the current user's feedback. */
+  value: feedbackValueSchema.nullable(),
+});
+export type SetMessageFeedbackRequest = z.infer<typeof setMessageFeedbackRequestSchema>;
+
+export const setMessageFeedbackResponseSchema = z.object({
+  feedback: messageFeedbackSchema.nullable(),
+});
+export type SetMessageFeedbackResponse = z.infer<typeof setMessageFeedbackResponseSchema>;

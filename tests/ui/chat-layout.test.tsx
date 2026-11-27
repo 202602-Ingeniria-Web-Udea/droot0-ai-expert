@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import "./setup";
-import { render, screen } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { delay, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
@@ -84,5 +84,50 @@ describe("ChatView layout", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Try again" }));
 
     expect(await screen.findByRole("log")).toBeInTheDocument();
+  });
+
+  it("saves feedback on an assistant message", async () => {
+    const assistantId = conversationDetailFixture.messages[1]!.id;
+    const bodies: unknown[] = [];
+
+    server.use(
+      http.get(conversationUrl, () => ok(conversationDetailFixture)),
+      http.put(api(`/api/messages/${assistantId}/feedback`), async ({ request }) => {
+        bodies.push(await request.json());
+        return ok({
+          feedback: {
+            value: "UP",
+            createdAt: "2026-11-06T09:07:00.000Z",
+            updatedAt: "2026-11-06T09:07:00.000Z",
+          },
+        });
+      }),
+    );
+    render(<ChatView conversationId={conversationId} />);
+
+    const helpful = await screen.findByRole("button", { name: "Helpful" });
+    await userEvent.click(helpful);
+
+    await waitFor(() => expect(helpful).toHaveAttribute("aria-pressed", "true"));
+    expect(bodies).toEqual([{ value: "UP" }]);
+  });
+
+  it("restores the previous rating when saving fails", async () => {
+    const assistantId = conversationDetailFixture.messages[1]!.id;
+
+    server.use(
+      http.get(conversationUrl, () => ok(conversationDetailFixture)),
+      http.put(api(`/api/messages/${assistantId}/feedback`), () =>
+        fail(500, "INTERNAL_ERROR", "An unexpected server error occurred."),
+      ),
+    );
+    render(<ChatView conversationId={conversationId} />);
+
+    const helpful = await screen.findByRole("button", { name: "Helpful" });
+    await userEvent.click(helpful);
+
+    const alert = await screen.findByRole("alert");
+    expect(alert).toHaveTextContent("Feedback was not saved");
+    await waitFor(() => expect(helpful).toHaveAttribute("aria-pressed", "false"));
   });
 });
