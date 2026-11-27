@@ -56,12 +56,39 @@ describe("MessageList", () => {
     expect(screen.getByText("First point").closest("ul")).toBeInTheDocument();
     expect(screen.getByRole("table")).toHaveTextContent("Array");
     expect(screen.getByRole("columnheader", { name: "Lookup" })).toBeInTheDocument();
-    expect(screen.getByText("typescript")).toBeInTheDocument();
+    expect(screen.getByText("TypeScript")).toHaveAttribute("data-language", "TypeScript");
 
     const code = document.querySelector("pre code");
     expect(code).toHaveTextContent("items.reduce((sum, item) => sum + item.price, 0);");
     // Syntax highlighting wraps tokens in spans.
     expect(code?.querySelector("span")).not.toBeNull();
+  });
+
+  it("normalizes language aliases and labels unknown languages", () => {
+    const content = [
+      "```js",
+      "const answer = 42;",
+      "```",
+      "",
+      "```py",
+      "print('hello')",
+      "```",
+      "",
+      "```mermaid",
+      "graph TD; A-->B;",
+      "```",
+      "",
+      "```",
+      "plain text",
+      "```",
+    ].join("\n");
+
+    render(<MessageList messages={[message("ASSISTANT", content)]} />);
+
+    expect(screen.getByText("JavaScript")).toHaveAttribute("data-language", "JavaScript");
+    expect(screen.getByText("Python")).toHaveAttribute("data-language", "Python");
+    expect(screen.getByText("MERMAID")).toHaveAttribute("data-language", "MERMAID");
+    expect(screen.getByText("Code")).toHaveAttribute("data-language", "Code");
   });
 
   it("opens external links in a new tab safely and leaves internal links alone", () => {

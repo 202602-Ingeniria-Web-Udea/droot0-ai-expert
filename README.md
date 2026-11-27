@@ -12,7 +12,7 @@ The assistant is intentionally specialized. It answers programming and software 
 
 ## Main features
 
-- AI-powered programming chat with Markdown rendering, syntax-highlighted code blocks, and copy-code actions.
+- AI-powered programming chat with Markdown rendering, syntax-highlighted code blocks, language badges, and copy-code actions.
 - Secure registration, login, logout, and session handling.
 - Protected routes and role-based access.
 - Personal conversation creation, continuation, renaming, export, and deletion.
@@ -352,7 +352,6 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 
 - Conversation search.
 - Message feedback.
-- Programming-language badges.
 - Streaming responses.
 - Application-level usage quotas.
 - Committed Playwright end-to-end tests.
