@@ -18,7 +18,7 @@ The assistant is intentionally specialized. It answers programming and software 
 - Personal conversation creation, continuation, renaming, export, and deletion.
 - Personal conversation history with search by title or message content.
 - Helpful / not helpful feedback on assistant responses.
-- ADMIN user management and role editing.
+- ADMIN user management with pagination and role editing.
 - ADMIN assistant configuration for the system prompt, model, temperature, and token limit.
 - ADMIN application statistics.
 - Responsive and accessible interface.
@@ -186,7 +186,7 @@ The prompt can be updated by an ADMIN through the assistant configuration API.
 | `DELETE` | `/api/conversations/:id`     | Delete an owned conversation        |
 | `POST`   | `/api/chat`                  | Send a message to DeepSeek          |
 | `PUT`    | `/api/messages/:id/feedback` | Rate or unrate an assistant message |
-| `GET`    | `/api/admin/users`           | List users                          |
+| `GET`    | `/api/admin/users`           | List users (paginated)              |
 | `PATCH`  | `/api/admin/users/:id/role`  | Change a user role                  |
 | `GET`    | `/api/admin/assistant`       | Read assistant configuration        |
 | `PUT`    | `/api/admin/assistant`       | Update assistant configuration      |
@@ -349,7 +349,6 @@ The frontend includes the landing page, authentication interfaces, responsive ap
 - No streaming AI responses.
 - No dedicated application-level chat rate limiter; provider rate limits are handled.
 - No Content Security Policy yet.
-- Admin user listing has no pagination.
 - No browser end-to-end test suite is committed; the live production flow was verified with a separate smoke check.
 - The Prisma dependency audit reports one transitive advisory in configuration tooling.
 

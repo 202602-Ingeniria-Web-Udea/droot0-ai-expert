@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { authUserFixture, adminStatsFixture, chatResponseFixture } from "@/lib/contracts/fixtures";
+import {
+  authUserFixture,
+  adminStatsFixture,
+  adminUserListFixture,
+  chatResponseFixture,
+} from "@/lib/contracts/fixtures";
 import { makeUser, testIds } from "../helpers/factories";
 
 const mocks = vi.hoisted(() => ({
@@ -63,7 +68,7 @@ describe("API route handlers", () => {
     vi.resetAllMocks();
     mocks.toAuthUserDto.mockReturnValue(authUserFixture);
     mocks.sendChatMessage.mockResolvedValue(chatResponseFixture);
-    mocks.listAdminUsers.mockResolvedValue([authUserFixture]);
+    mocks.listAdminUsers.mockResolvedValue(adminUserListFixture);
     mocks.getAdminStats.mockResolvedValue(adminStatsFixture);
     mocks.updateAdminUserRole.mockResolvedValue(authUserFixture);
   });
@@ -147,19 +152,33 @@ describe("API route handlers", () => {
       new ApiError(403, "FORBIDDEN", "Administrator access required."),
     );
 
-    const response = await getAdminUsers();
+    const response = await getAdminUsers(new Request("http://localhost:3000/api/admin/users"));
 
     expect(response.status).toBe(403);
   });
 
-  it("lists users for an admin", async () => {
+  it("lists a page of users for an admin", async () => {
     mocks.requireAdmin.mockResolvedValue(makeUser({ id: testIds.admin, role: "ADMIN" }));
 
-    const response = await getAdminUsers();
+    const response = await getAdminUsers(
+      new Request("http://localhost:3000/api/admin/users?page=2&pageSize=10"),
+    );
     const body = await response.json();
 
     expect(response.status).toBe(200);
-    expect(body.data.users).toEqual([authUserFixture]);
+    expect(body.data).toEqual(adminUserListFixture);
+    expect(mocks.listAdminUsers).toHaveBeenCalledWith({ page: 2, pageSize: 10 });
+  });
+
+  it("rejects invalid user pagination parameters", async () => {
+    mocks.requireAdmin.mockResolvedValue(makeUser({ id: testIds.admin, role: "ADMIN" }));
+
+    const response = await getAdminUsers(
+      new Request("http://localhost:3000/api/admin/users?page=0"),
+    );
+
+    expect(response.status).toBe(422);
+    expect(mocks.listAdminUsers).not.toHaveBeenCalled();
   });
 
   it("returns 403 when a non-admin requests statistics", async () => {

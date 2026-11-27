@@ -22,6 +22,40 @@ installMockServer();
 const usersUrl = api("/api/admin/users");
 const roleUrl = api(`/api/admin/users/${regularUser.id}/role`);
 
+const thirdUser: AuthUser = {
+  ...regularUser,
+  id: "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d",
+  email: "grace@example.com",
+  name: "Grace Hopper",
+};
+
+const firstPageUsers: AuthUser[] = [
+  adminUser,
+  regularUser,
+  ...Array.from({ length: 18 }, (_, index) => ({
+    ...regularUser,
+    id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
+    email: `user${index}@example.com`,
+    name: `User ${index}`,
+  })),
+];
+
+/** Paginated response around the users a test wants to show. */
+function pageOf(
+  users: AuthUser[],
+  {
+    page = 1,
+    pageSize = 20,
+    total = users.length,
+  }: {
+    page?: number;
+    pageSize?: number;
+    total?: number;
+  } = {},
+) {
+  return { users, page, pageSize, total, totalPages: Math.ceil(total / pageSize) };
+}
+
 function renderAs(user: AuthUser, children: ReactNode) {
   return render(
     <ToastProvider>
@@ -77,7 +111,7 @@ describe("AdminNav", () => {
 
 describe("UsersTable", () => {
   it("lists users with email, role, and creation date", async () => {
-    server.use(http.get(usersUrl, () => ok({ users: [adminUser, regularUser] })));
+    server.use(http.get(usersUrl, () => ok(pageOf([adminUser, regularUser]))));
     renderAs(adminUser, <UsersTable />);
 
     expect(await roleSelect("ada@example.com")).toHaveValue("USER");
@@ -87,8 +121,40 @@ describe("UsersTable", () => {
     expect(rows[1]).toHaveTextContent("Nov 6, 2026");
   });
 
+  it("paginates users and requests the next page", async () => {
+    server.use(
+      http.get(usersUrl, ({ request }) => {
+        const page = Number(new URL(request.url).searchParams.get("page") ?? "1");
+
+        return page === 2
+          ? ok(pageOf([thirdUser], { page: 2, total: 21 }))
+          : ok(pageOf(firstPageUsers, { page: 1, total: 21 }));
+      }),
+    );
+    renderAs(adminUser, <UsersTable />);
+
+    expect(await screen.findByText(/Showing 1–20 of 21 users/)).toBeInTheDocument();
+    expect(screen.getByText(/Page 1 of 2/)).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Next page" }));
+
+    expect(await screen.findByText(/Page 2 of 2/)).toBeInTheDocument();
+    expect(await roleSelect("grace@example.com")).toHaveValue("USER");
+    expect(
+      screen.queryByRole("combobox", { name: "Role for ada@example.com" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Next page" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Previous page" })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Previous page" }));
+
+    expect(await screen.findByText(/Page 1 of 2/)).toBeInTheDocument();
+    expect(await roleSelect("ada@example.com")).toHaveValue("USER");
+  });
+
   it("disables the role control on the signed-in admin and explains why", async () => {
-    server.use(http.get(usersUrl, () => ok({ users: [adminUser, regularUser] })));
+    server.use(http.get(usersUrl, () => ok(pageOf([adminUser, regularUser]))));
     renderAs(adminUser, <UsersTable />);
 
     const own = await roleSelect("admin@example.com");
@@ -100,7 +166,7 @@ describe("UsersTable", () => {
   it("asks for confirmation and does nothing when cancelled", async () => {
     const onPatch = vi.fn();
     server.use(
-      http.get(usersUrl, () => ok({ users: [adminUser, regularUser] })),
+      http.get(usersUrl, () => ok(pageOf([adminUser, regularUser]))),
       http.patch(roleUrl, onPatch),
     );
     renderAs(adminUser, <UsersTable />);
@@ -119,7 +185,7 @@ describe("UsersTable", () => {
   it("changes the role after confirmation and gives feedback", async () => {
     let body: unknown;
     server.use(
-      http.get(usersUrl, () => ok({ users: [adminUser, regularUser] })),
+      http.get(usersUrl, () => ok(pageOf([adminUser, regularUser]))),
       http.patch(roleUrl, async ({ request }) => {
         body = await request.json();
         return ok({ user: { ...regularUser, role: "ADMIN" } });
@@ -138,7 +204,7 @@ describe("UsersTable", () => {
 
   it("shows the business rule when the backend rejects the change", async () => {
     server.use(
-      http.get(usersUrl, () => ok({ users: [adminUser, { ...regularUser, role: "ADMIN" }] })),
+      http.get(usersUrl, () => ok(pageOf([adminUser, { ...regularUser, role: "ADMIN" }]))),
       http.patch(roleUrl, () => fail(409, "CONFLICT", "The last administrator cannot be demoted.")),
     );
     renderAs(adminUser, <UsersTable />);

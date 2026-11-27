@@ -42,10 +42,51 @@ function TableSkeleton() {
   );
 }
 
+function UserPagination({
+  page,
+  pageSize,
+  total,
+  totalPages,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  const first = (page - 1) * pageSize + 1;
+  const last = Math.min(page * pageSize, total);
+  const lastPage = Math.max(totalPages, 1);
+
+  return (
+    <nav
+      aria-label="User pages"
+      className="flex flex-col gap-3 border-t border-line pt-4 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <p className="text-sm text-ink-muted" aria-live="polite">
+        Showing {first}–{last} of {total} {total === 1 ? "user" : "users"} · Page {page} of{" "}
+        {lastPage}
+      </p>
+      <div className="flex items-center gap-2">
+        <Button variant="secondary" size="sm" disabled={page <= 1} onClick={onPrevious}>
+          Previous page
+        </Button>
+        <Button variant="secondary" size="sm" disabled={page >= lastPage} onClick={onNext}>
+          Next page
+        </Button>
+      </div>
+    </nav>
+  );
+}
+
 export function UsersTable() {
   const currentUser = useCurrentUser();
   const { toast } = useToast();
-  const users = useAsyncData("admin-users", (signal) => listUsers(signal));
+  const [page, setPage] = useState(1);
+  const users = useAsyncData(`admin-users:${page}`, (signal) => listUsers(page, signal));
   const [change, setChange] = useState<RoleChange | null>(null);
   const [saving, setSaving] = useState(false);
   const [changeError, setChangeError] = useState<string | null>(null);
@@ -66,6 +107,7 @@ export function UsersTable() {
     try {
       const { user: updated } = await updateUserRole(change.user.id, change.role);
       users.setData((current) => ({
+        ...current,
         users: current.users.map((user) => (user.id === updated.id ? updated : user)),
       }));
       toast({
@@ -102,7 +144,7 @@ export function UsersTable() {
     );
   }
 
-  if (users.data.users.length === 0) {
+  if (users.data.total === 0) {
     return <EmptyState title="No users yet" description="Registered users appear here." />;
   }
 
@@ -172,6 +214,15 @@ export function UsersTable() {
           );
         })}
       </ul>
+
+      <UserPagination
+        page={users.data.page}
+        pageSize={users.data.pageSize}
+        total={users.data.total}
+        totalPages={users.data.totalPages}
+        onPrevious={() => setPage((current) => Math.max(1, current - 1))}
+        onNext={() => setPage((current) => current + 1)}
+      />
 
       <Dialog
         open={change !== null}

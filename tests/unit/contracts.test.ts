@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  adminUserListQuerySchema,
   updateAssistantConfigRequestSchema,
   updateUserRoleRequestSchema,
 } from "@/lib/contracts/admin";
@@ -40,6 +41,16 @@ describe("shared request contracts", () => {
   it("validates role updates", () => {
     expect(updateUserRoleRequestSchema.safeParse({ role: "ADMIN" }).success).toBe(true);
     expect(updateUserRoleRequestSchema.safeParse({ role: "SUPERUSER" }).success).toBe(false);
+  });
+
+  it("validates admin user pagination parameters", () => {
+    expect(adminUserListQuerySchema.parse({})).toEqual({ page: 1, pageSize: 20 });
+    expect(adminUserListQuerySchema.parse({ page: "2", pageSize: "50" })).toEqual({
+      page: 2,
+      pageSize: 50,
+    });
+    expect(adminUserListQuerySchema.safeParse({ page: "0" }).success).toBe(false);
+    expect(adminUserListQuerySchema.safeParse({ pageSize: "101" }).success).toBe(false);
   });
 
   it("validates assistant configuration limits", () => {

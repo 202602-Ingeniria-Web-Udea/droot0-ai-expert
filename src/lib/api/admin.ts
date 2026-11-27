@@ -14,8 +14,13 @@ import { apiRequest } from "./client";
  * interface shows.
  */
 
-export function listUsers(signal?: AbortSignal) {
-  return apiRequest("/api/admin/users", { schema: adminUserListResponseSchema, signal });
+export function listUsers(page = 1, signal?: AbortSignal) {
+  const searchParams = new URLSearchParams({ page: String(page) });
+
+  return apiRequest(`/api/admin/users?${searchParams.toString()}`, {
+    schema: adminUserListResponseSchema,
+    signal,
+  });
 }
 
 export function updateUserRole(userId: string, role: Role) {

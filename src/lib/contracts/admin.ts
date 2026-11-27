@@ -3,8 +3,18 @@ import { authUserSchema } from "./auth";
 import { isoDateTimeSchema, roleSchema, uuidSchema } from "./common";
 import { conversationTitleSchema } from "./conversations";
 
+export const adminUserListQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+});
+export type AdminUserListQuery = z.infer<typeof adminUserListQuerySchema>;
+
 export const adminUserListResponseSchema = z.object({
   users: z.array(authUserSchema),
+  page: z.number().int().positive(),
+  pageSize: z.number().int().positive(),
+  total: z.number().int().nonnegative(),
+  totalPages: z.number().int().nonnegative(),
 });
 export type AdminUserListResponse = z.infer<typeof adminUserListResponseSchema>;
 

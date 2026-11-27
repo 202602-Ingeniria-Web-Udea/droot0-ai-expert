@@ -4,7 +4,7 @@
  * These values are examples only. Never use them as production data and never
  * present them as real application records.
  */
-import type { AdminStats, AssistantConfig } from "./admin";
+import type { AdminStats, AdminUserListResponse, AssistantConfig } from "./admin";
 import type { AuthUser } from "./auth";
 import type { ChatResponse } from "./chat";
 import type { ConversationDetailResponse, ConversationSummary, Message } from "./conversations";
@@ -72,6 +72,14 @@ export const assistantConfigFixture: AssistantConfig = {
   maxTokens: 2048,
   updatedAt: "2026-11-06T09:00:00.000Z",
   updatedById: null,
+};
+
+export const adminUserListFixture: AdminUserListResponse = {
+  users: [authUserFixture],
+  page: 1,
+  pageSize: 20,
+  total: 1,
+  totalPages: 1,
 };
 
 export const adminStatsFixture: AdminStats = {

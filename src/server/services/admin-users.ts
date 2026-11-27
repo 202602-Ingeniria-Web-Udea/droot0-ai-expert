@@ -1,16 +1,45 @@
 import "server-only";
 import { Role } from "@prisma/client";
+import type { AdminUserListResponse } from "@/lib/contracts/admin";
 import type { AuthUser } from "@/lib/contracts/auth";
 import { toAuthUserDto } from "@/server/auth/profile";
 import { prisma } from "@/server/db/prisma";
 import { ApiError } from "@/server/http/api-error";
 
-export async function listAdminUsers(): Promise<AuthUser[]> {
-  const users = await prisma.user.findMany({
-    orderBy: { createdAt: "desc" },
-  });
+const DEFAULT_PAGE_SIZE = 20;
 
-  return users.map(toAuthUserDto);
+type AdminUserListOptions = {
+  page: number;
+  pageSize?: number;
+};
+
+/**
+ * One page of registered users, newest first.
+ *
+ * Counts and rows are fetched in one transaction so the page metadata always
+ * matches the users it describes.
+ */
+export async function listAdminUsers({
+  page,
+  pageSize = DEFAULT_PAGE_SIZE,
+}: AdminUserListOptions): Promise<AdminUserListResponse> {
+  return prisma.$transaction(async (transaction) => {
+    const total = await transaction.user.count();
+
+    const users = await transaction.user.findMany({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: (page - 1) * pageSize,
+      take: pageSize,
+    });
+
+    return {
+      users: users.map(toAuthUserDto),
+      page,
+      pageSize,
+      total,
+      totalPages: Math.ceil(total / pageSize),
+    };
+  });
 }
 
 export async function updateAdminUserRole(

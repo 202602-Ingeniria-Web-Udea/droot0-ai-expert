@@ -45,18 +45,65 @@ describe("admin user service", () => {
       role: "ADMIN",
     });
 
+    mocks.user.count.mockResolvedValue(2);
     mocks.user.findMany.mockResolvedValue([admin, user]);
 
-    const result = await listAdminUsers();
+    const result = await listAdminUsers({ page: 1 });
 
-    expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({
+    expect(result).toMatchObject({
+      page: 1,
+      pageSize: 20,
+      total: 2,
+      totalPages: 1,
+    });
+    expect(result.users).toHaveLength(2);
+    expect(result.users[0]).toMatchObject({
       id: testIds.admin,
       role: "ADMIN",
     });
-    expect(result[0]?.createdAt).toBe(admin.createdAt.toISOString());
+    expect(result.users[0]?.createdAt).toBe(admin.createdAt.toISOString());
     expect(mocks.user.findMany).toHaveBeenCalledWith({
-      orderBy: { createdAt: "desc" },
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: 0,
+      take: 20,
+    });
+  });
+
+  it("requests the correct page and reports the page count", async () => {
+    mocks.user.count.mockResolvedValue(45);
+    mocks.user.findMany.mockResolvedValue([makeUser()]);
+
+    const result = await listAdminUsers({ page: 2, pageSize: 20 });
+
+    expect(mocks.user.findMany).toHaveBeenCalledWith({
+      orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+      skip: 20,
+      take: 20,
+    });
+    expect(result).toMatchObject({
+      page: 2,
+      pageSize: 20,
+      total: 45,
+      totalPages: 3,
+    });
+  });
+
+  it("reports an empty page beyond the last page", async () => {
+    mocks.user.count.mockResolvedValue(3);
+    mocks.user.findMany.mockResolvedValue([]);
+
+    const result = await listAdminUsers({ page: 9, pageSize: 20 });
+
+    expect(mocks.user.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skip: 160,
+        take: 20,
+      }),
+    );
+    expect(result).toMatchObject({
+      page: 9,
+      total: 3,
+      totalPages: 1,
     });
   });
 
